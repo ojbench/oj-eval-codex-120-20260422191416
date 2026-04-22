@@ -97,6 +97,18 @@ class ACMOJClient:
     def abort_submission(self, submission_id: int) -> Optional[Dict]:
         return self._make_request("POST", f"/submission/{submission_id}/abort")
 
+    # Added: submit plain source code
+    def submit_code(self, problem_id: int, language: str, code_text: str) -> Optional[Dict]:
+        data = {
+            "language": language,
+            "code": code_text,
+        }
+        result = self._make_request("POST", f"/problem/{problem_id}/submit", data=data)
+        if result and 'id' in result:
+            self._save_submission_id(result['id'])
+        return result
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="ACMOJ API Command Line Client")
