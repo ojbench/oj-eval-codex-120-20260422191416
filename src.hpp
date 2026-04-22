@@ -1,25 +1,7 @@
 #pragma once
 
+#include Task.hpp
 #include <vector>
-#include <string>
-#include <iostream>
-
-class Task {
-public:
-    Task(std::string name, size_t time, size_t period)
-        : name(name), first_interval(time), period(period) {}
-    void set() {}
-    size_t getFirstInterval() const { return first_interval; }
-    size_t getPeriod() const { return period; }
-    void execute() { std::cout << "Task: " << name << " excuted" << std::endl; }
-    static void incTime() {}
-    static size_t getCnt() { return 0; }
-
-private:
-    std::string name;
-    const size_t first_interval;
-    const size_t period;
-};
 
 class TimingWheel;
 class Timer;
@@ -34,10 +16,10 @@ public:
 private:
     Task* task;
     TaskNode* next; TaskNode* prev;
-    int rem;      // remaining lower-level seconds when cascading
-    int rounds;   // additional full cycles for top wheel (hours)
-    int level;    // 0: sec, 1: min, 2: hour, -1: none
-    int slot;     // slot index
+    int rem;        // remainder seconds when cascading down
+    int rounds;     // extra full cycles on hour wheel
+    int level;      // 0: sec, 1: min, 2: hour, -1: none
+    int slot;       // slot index in its wheel
     bool active;
 };
 
@@ -54,7 +36,7 @@ private:
     const size_t size;
     const size_t interval;
     size_t current_slot;
-    TaskNode** slots; // heads of doubly-linked lists per slot
+    TaskNode** slots;
 };
 
 class Timer {
@@ -78,10 +60,9 @@ public:
 
     std::vector<Task*> tick() {
         std::vector<Task*> due;
-
         // advance seconds
         sec.current_slot = (sec.current_slot + 1) % sec.size;
-
+        Task::incTime();
         // on wrap, advance minute and hour, then cascade
         if (sec.current_slot == 0) {
             minu.current_slot = (minu.current_slot + 1) % minu.size;
@@ -91,7 +72,6 @@ public:
             }
             cascade_from_minute();
         }
-
         // execute tasks in current sec slot
         int s = (int)sec.current_slot;
         TaskNode* p = sec.slots[s];
@@ -161,7 +141,7 @@ private:
             node->rem = 0; node->rounds = 0;
             return;
         }
-        int sec_per_min = (int)minu.interval; // 60
+        int sec_per_min = (int)minu.interval;
         if (dt < (int)(minu.size * minu.interval)) {
             int mins = dt / sec_per_min;
             int rems = dt % sec_per_min;
@@ -170,7 +150,7 @@ private:
             node->rem = rems; node->rounds = 0;
             return;
         }
-        int sec_per_hour = (int)hour.interval; // 3600
+        int sec_per_hour = (int)hour.interval;
         long long hours_count = dt / sec_per_hour;
         int remh = dt % sec_per_hour;
         int slot_offset = (int)(hours_count % (long long)hour.size);
